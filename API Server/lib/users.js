@@ -22,7 +22,11 @@ exports.login = ({ username, password }) => new Promise((resolve) => {
                     S: username
                 }
             },
-            ProjectionExpression: "hash, salt"
+            ProjectionExpression: "#h, salt, #t",
+            ExpressionAttributeNames: {
+                "#h": "hash",
+                "#t": "type"
+            }
         }, (error, data) => {
             if (error) {
                 console.error("Login Error: Get User")
@@ -61,7 +65,8 @@ exports.login = ({ username, password }) => new Promise((resolve) => {
                             } else {
                                 resolve({
                                     username,
-                                    sessionKey
+                                    sessionKey,
+                                    type: user.type.S
                                 })
                             }
                         })

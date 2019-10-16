@@ -14,7 +14,7 @@ var { schema, root } = require("./graphql")
  */
 app.use(cors({
     origin: 'http://localhost:3000', // change for Production
-    allowedHeaders: ["X-Session-Key", "Content-Type"]
+    allowedHeaders: ["X-Session-Key", "X-Session-User", "Content-Type"]
 }))
 
 /**

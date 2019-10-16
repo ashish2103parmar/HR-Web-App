@@ -14,13 +14,17 @@ var dynamodbClient = new DynamoDB({ region: "us-east-1" })
 exports.createRole = ({ newRole }, user) => new Promise((resolve) => {
     if (user && user.type === "admin") {
         dynamodbClient.updateItem({
-            [dirDB.key]: {
-                S: "counters"
+            Key: {
+                [dirDB.key]: {
+                    S: "counters"
+                }
             },
             TableName: dirDB.name,
             UpdateExpression: "set roleidx = roleidx + :val",
             ExpressionAttributeValues: {
-                ":val": 1
+                ":val": {
+                    N: "1"
+                }
             },
             ReturnValues: "UPDATED_NEW"
         }, (error, data) => {
@@ -150,7 +154,9 @@ exports.listRoles = ({ nextToken }, user) => new Promise((resolve) => {
                 "#t": "type"
             },
             ExpressionAttributeValues: {
-                ":t": "role"
+                ":t": {
+                    S: "role"
+                }
             },
             ExclusiveStartKey: nextToken ? {
                 S: nextToken
@@ -163,9 +169,10 @@ exports.listRoles = ({ nextToken }, user) => new Promise((resolve) => {
                     error: CustomException(CustomExceptionCodes.UnknownError, "Something went wrong")
                 })
             } else {
+
                 resolve({
                     nextToken: data.LastEvaluatedKey ? data.LastEvaluatedKey.S : null,
-                    ...DynamoDB.Converter.unmarshall({ roles: { L: data.Items } })
+                    roles: data.Items.map((value) => DynamoDB.Converter.unmarshall(value))
                 })
             }
         })

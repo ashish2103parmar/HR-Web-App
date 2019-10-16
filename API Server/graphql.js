@@ -5,6 +5,7 @@ var { buildSchema } = require('graphql');
 var userFunctions = require('./lib/users');
 var roleFunctions = require("./lib/roles");
 var employeeFunctions = require("./lib/employee");
+var reportFunctions = require("./lib/reports");
 
 /**
  * Schema
@@ -12,7 +13,7 @@ var employeeFunctions = require("./lib/employee");
 exports.schema = buildSchema(`
     type Error {
         code: String!
-        msg:String!
+        msg: String!
     }
 
     type RoleInfo {
@@ -37,14 +38,14 @@ exports.schema = buildSchema(`
     }
 
     type EmployeeInfo {
-        id: ID!
-        name: String!
-        roleID: ID!
-        address: String!
-        email: String!
-        mobile: String!
-        bank: BankInfo!
-        isActive: Boolean!
+        id: ID
+        name: String
+        roleID: ID
+        address: String
+        email: String
+        mobile: String
+        bank: BankInfo
+        isActive: Boolean
         error: Error
     }
 
@@ -62,15 +63,14 @@ exports.schema = buildSchema(`
     }
 
     type ReportInfo {
-        id: ID!
-        timestamp: Int!
-        workHours: Int!
-        description: String!
+        id: ID
+        timestamp: Int
+        workHours: Int
+        description: String
         role: RoleInfo
-        amount: Int!
-        status: String!
+        amount: Int
+        status: String
         paymentID: String
-        bank: BankInfo
         error: Error
     }
 
@@ -90,6 +90,7 @@ exports.schema = buildSchema(`
     type SessionCredentials {
         username: String
         sessionKey: String
+        type: String
         error: Error
     }
 
@@ -100,6 +101,12 @@ exports.schema = buildSchema(`
         perHourRate: Int!
     }
     
+    input Bank {
+        name: String!
+        IFSC: String!
+        accNo: String!   
+    }
+
     input Employee {
         id: ID
         name: String!
@@ -107,7 +114,7 @@ exports.schema = buildSchema(`
         address: String!
         email: String!
         mobile: String!
-        bank: BankInfo!
+        bank: Bank!
         isActive: Boolean!
     }
 
@@ -118,7 +125,7 @@ exports.schema = buildSchema(`
         registerEmployee(newEmployee: Employee!): EmployeeInfo
         updateEmployee(employee: Employee!): EmployeeInfo
         reportWorkHours(employeeID: ID!, workHours: Int!, description: String!): ReportInfo
-        makePayment(employeeID: ID!, reportID: ID!): ReportInfo
+        makePayment(reportID: ID!): ReportInfo
     }
 `);
 
@@ -134,5 +141,7 @@ exports.root = {
     updateEmployee: employeeFunctions.updateEmployee,
     listEmployees: employeeFunctions.listEmployees,
     employeeInfo: employeeFunctions.employeeInfo,
-
+    reportWorkHours: reportFunctions.reportWorkHours,
+    makePayment: reportFunctions.makePayment,
+    listReport: reportFunctions.listReport
 }

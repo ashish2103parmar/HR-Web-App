@@ -25,7 +25,10 @@ exports.validateSession = (req, res, next) => {
                         S: username
                     }
                 },
-                ProjectionExpression: "sessionKey, type"
+                ProjectionExpression: "sessionKey, #t",
+                ExpressionAttributeNames: {
+                    "#t": "type"
+                }
             }, (error, data) => {
                 if (error) {
                     console.error("Session Validation Error: Get User")

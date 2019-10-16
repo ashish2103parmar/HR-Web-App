@@ -18,7 +18,7 @@ exports.reportWorkHours = ({ employeeID, workHours, description }, user) => new 
                 TableName: dirDB.name,
                 Key: {
                     [dirDB.key]: {
-                        S: employee.id
+                        S: employeeID
                     }
                 },
                 ProjectionExpression: "#i, roleID, isActive",
@@ -36,10 +36,10 @@ exports.reportWorkHours = ({ employeeID, workHours, description }, user) => new 
                     if (data.Item) {
                         const employeeDetails = DynamoDB.Converter.unmarshall(data.Item)
                         dynamodbClient.getItem({
-                            TableName: employeeDetails.roleID,
+                            TableName: dirDB.name,
                             Key: {
                                 [dirDB.key]: {
-                                    S: data.Item.roleID.S
+                                    S: employeeDetails.roleID
                                 }
                             },
                             ProjectionExpression: "#i, #n, description, perHourRate",
@@ -58,13 +58,17 @@ exports.reportWorkHours = ({ employeeID, workHours, description }, user) => new 
                                 if (data.Item) {
                                     const roleDetails = DynamoDB.Converter.unmarshall(data.Item)
                                     dynamodbClient.updateItem({
-                                        [dirDB.key]: {
-                                            S: "counters"
+                                        Key: {
+                                            [dirDB.key]: {
+                                                S: "counters"
+                                            }
                                         },
                                         TableName: dirDB.name,
                                         UpdateExpression: "set reportidx = reportidx + :val",
                                         ExpressionAttributeValues: {
-                                            ":val": 1
+                                            ":val": {
+                                                N: "1"
+                                            }
                                         },
                                         ReturnValues: "UPDATED_NEW"
                                     }, (error, data) => {
@@ -78,7 +82,7 @@ exports.reportWorkHours = ({ employeeID, workHours, description }, user) => new 
                                             const counters = data.Attributes
                                             const id = `W0${getYear()}${zeroPad(counters.reportidx.N, 10)}`
                                             const details = {
-                                                timestamp: Date.now(), // epoch in ms
+                                                timestamp: Math.round(Date.now() / 1000), // epoch in sec
                                                 amount: roleDetails.perHourRate * workHours,
                                                 status: "Pending",
                                                 description,
@@ -131,6 +135,111 @@ exports.reportWorkHours = ({ employeeID, workHours, description }, user) => new 
                 error: CustomException(CustomExceptionCodes.InvalidRequest, "Invalid Employee id")
             })
         }
+    } else {
+        resolve({
+            error: CustomException(CustomExceptionCodes.AccessDenied, "Access Denied")
+        })
+    }
+})
+
+/**
+ * Make Payment
+ */
+exports.makePayment = ({ reportID }, user) => new Promise((resolve) => {
+    if (user && user.type === "admin") {
+        dynamodbClient.updateItem({
+            Key: {
+                [reportDB.key]: {
+                    S: reportID
+                }
+            },
+            TableName: reportDB.name,
+            UpdateExpression: "set #s = :s, paymentID = :p",
+            ConditionExpression: `#s = :cs AND attribute_exists(${[reportDB.key]})`,
+            ExpressionAttributeNames: {
+                "#s": "status"
+            },
+            ExpressionAttributeValues: {
+                ":s": {
+                    S: "Cleared"
+                },
+                ":cs": {
+                    S: "Pending"
+                },
+                ":p": {
+                    S: `P${Math.floor(Math.random() * 999999999)}`
+                }
+            },
+            ReturnValues: "ALL_NEW"
+        }, (error, data) => {
+            if (error) {
+                if (error.code === "ConditionalCheckFailedException") {
+                    resolve({
+                        error: CustomException(CustomExceptionCodes.InvalidRequest, "Payment Processed/Invalid ReportID")
+                    })
+                } else {
+                    console.error("Make Payment Error: update Report")
+                    console.error(error)
+                    resolve({
+                        error: CustomException(CustomExceptionCodes.UnknownError, "Something went wrong")
+                    })
+                }
+            } else {
+                var details = DynamoDB.Converter.unmarshall(data.Attributes)
+                details["id"] = details[reportDB.key]
+                delete details[reportDB.key]
+                delete details[reportDB.index.employeeID.key]
+                resolve(details)
+            }
+        })
+    } else {
+        resolve({
+            error: CustomException(CustomExceptionCodes.AccessDenied, "Access Denied")
+        })
+    }
+})
+
+/**
+ * List Report
+ */
+exports.listReport = ({ employeeID, nextToken }, user) => new Promise((resolve) => {
+    if (user && (user.type === "admin" || user.username === employeeID)) {
+        dynamodbClient.query({
+            TableName: reportDB.name,
+            IndexName: reportDB.index.employeeID.name,
+            KeyConditionExpression: "#eID = :eID",
+            ExpressionAttributeNames: {
+                "#eID": reportDB.index.employeeID.key
+            },
+            ExpressionAttributeValues: {
+                ":eID": {
+                    S: employeeID
+                }
+            },
+            ExclusiveStartKey: nextToken ? {
+                S: nextToken
+            } : undefined
+        }, (error, data) => {
+            if (error) {
+                console.error("List Report Error: query Report")
+                console.error(error)
+                resolve({
+                    error: CustomException(CustomExceptionCodes.UnknownError, "Something went wrong")
+                })
+            } else {
+                var reports = data.Items.map((details) => {
+                    details = DynamoDB.Converter.unmarshall(details)
+                    details["id"] = details[reportDB.key]
+                    delete details[reportDB.key]
+                    delete details[reportDB.index.employeeID.key]
+                    return details
+                })
+                resolve({
+                    nextToken: data.LastEvaluatedKey ? data.LastEvaluatedKey.S : null,
+                    reports
+                })
+            }
+        })
     } else {
         resolve({
             error: CustomException(CustomExceptionCodes.AccessDenied, "Access Denied")

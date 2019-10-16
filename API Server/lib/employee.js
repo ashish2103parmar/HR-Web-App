@@ -14,13 +14,17 @@ exports.registerEmployee = ({ newEmployee }, user) => new Promise((resolve) => {
     if (user && user.type === "admin") {
         if (validateRoleID(newEmployee.roleID))
             dynamodbClient.updateItem({
-                [dirDB.key]: {
-                    S: "counters"
+                Key: {
+                    [dirDB.key]: {
+                        S: "counters"
+                    }
                 },
                 TableName: dirDB.name,
                 UpdateExpression: "set empidx = empidx + :val",
                 ExpressionAttributeValues: {
-                    ":val": 1
+                    ":val": {
+                        N: "1"
+                    }
                 },
                 ReturnValues: "UPDATED_NEW"
             }, (error, data) => {
@@ -94,7 +98,7 @@ exports.updateEmployee = ({ employee }, user) => new Promise((resolve) => {
                     },
                     ExpressionAttributeValues: {
                         ":n": {
-                            S: role.name
+                            S: employee.name
                         },
                         ":a": {
                             S: employee.address
@@ -110,7 +114,7 @@ exports.updateEmployee = ({ employee }, user) => new Promise((resolve) => {
                             S: employee.roleID
                         },
                         ":iA": {
-                            S: employee.isActive
+                            BOOL: employee.isActive
                         },
                     }
                 }, (error) => {
@@ -163,7 +167,9 @@ exports.listEmployees = ({ nextToken }, user) => new Promise((resolve) => {
                 "#t": "type"
             },
             ExpressionAttributeValues: {
-                ":t": "employee"
+                ":t": {
+                    S: "employee"
+                }
             },
             ExclusiveStartKey: nextToken ? {
                 S: nextToken
@@ -178,7 +184,7 @@ exports.listEmployees = ({ nextToken }, user) => new Promise((resolve) => {
             } else {
                 resolve({
                     nextToken: data.LastEvaluatedKey ? data.LastEvaluatedKey.S : null,
-                    ...DynamoDB.Converter.unmarshall({ employees: { L: data.Items } })
+                    employees: data.Items.map(value => DynamoDB.Converter.unmarshall(value))
                 })
             }
         })
@@ -199,7 +205,7 @@ exports.employeeInfo = ({ employeeID }, user) => new Promise((resolve) => {
                 TableName: dirDB.name,
                 Key: {
                     [dirDB.key]: {
-                        S: employee.id
+                        S: employeeID
                     }
                 },
                 ProjectionExpression: "#i, #n, roleID, address, email, mobile, bank, isActive",
