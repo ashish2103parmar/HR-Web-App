@@ -118,8 +118,14 @@ exports.schema = buildSchema(`
         isActive: Boolean!
     }
 
+    type StatusResponse {
+        error: Error
+    }
+
     type Mutation {
         login(username: String!, password: String!): SessionCredentials
+        resetPassword(employeeID: ID!): StatusResponse
+        changePassword(oldPassword: String!, newPassword: String!): StatusResponse
         createRole(newRole: Role!): RoleInfo
         updateRole(role: Role!): RoleInfo
         registerEmployee(newEmployee: Employee!): EmployeeInfo
@@ -134,6 +140,8 @@ exports.schema = buildSchema(`
  */
 exports.root = {
     login: userFunctions.login,
+    resetPassword: userFunctions.resetPassword,
+    changePassword: userFunctions.changePassword,
     createRole: roleFunctions.createRole,
     updateRole: roleFunctions.updateRole,
     listRoles: roleFunctions.listRoles,

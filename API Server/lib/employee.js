@@ -4,7 +4,7 @@
 var DynamoDB = require("aws-sdk/clients/dynamodb")
 var { dirDB } = require("../cred")
 var { CustomException, CustomExceptionCodes } = require("./exceptions")
-var { zeroPad, getYear, validateEmployeeID, validateRoleID } = require("./util")
+var { zeroPad, getYear, validateEmployeeID, validateRoleID, generateRandomString, hashPassword } = require("./util")
 var dynamodbClient = new DynamoDB({ region: "us-east-1" })
 
 /**
@@ -37,6 +37,7 @@ exports.registerEmployee = ({ newEmployee }, user) => new Promise((resolve) => {
                 } else {
                     const counters = data.Attributes
                     const id = `E0${getYear()}${zeroPad(counters.empidx.N, 4)}`
+                    const salt = generateRandomString(16)
                     dynamodbClient.putItem({
                         Item: {
                             ...DynamoDB.Converter.marshall(newEmployee),
@@ -45,6 +46,12 @@ exports.registerEmployee = ({ newEmployee }, user) => new Promise((resolve) => {
                             },
                             [dirDB.index.type.key]: {
                                 S: "employee"
+                            },
+                            "salt": {
+                                S: salt
+                            },
+                            "hash": {
+                                S: hashPassword(id.toLowerCase(), salt)
                             }
                         },
                         TableName: dirDB.name

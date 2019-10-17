@@ -37,15 +37,15 @@ const useStyles = makeStyles(theme => ({
     },
 }));
 
-function SignIn(props) {
-    var API = new APIRequest("http://localhost:8080/graphql")
+function Login(props) {
+    const API = new APIRequest("http://localhost:8080/graphql");
+   
     const classes = useStyles();
 
-    const defaultValues = {
+    const [variables, setVariables] = React.useState({
         username: "",
         password: ""
-    }
-    const [variables, setVariables] = React.useState(defaultValues)
+    })
 
     const onVariableChange = (key) => (event) => {
         setVariables({ ...variables, [key]: event.target.value })
@@ -64,27 +64,25 @@ function SignIn(props) {
                 <form className={classes.form} onSubmit={event => {
                     event.preventDefault()
                     API.request(`
-                            mutation SignIn($email: String!, $password: String!) {
-                                signin(email: $email, password: $password) {
+                            mutation LogIn($username: String!, $password: String!) {
+                                login(username: $username, password: $password) {
+                                    username
+                                    sessionKey
+                                    type
                                     error {
                                         code
                                         msg
-                                    }
-                                    credentials {
-                                        sessionKey
-                                        sessionExpire
                                     }
                                 }
                             }
                         `, variables).then((response) => response.json()).then(resp => {
                         if (resp.data) {
-                            if (resp.data.signin.error) {
-                                alert(resp.data.signin.error.msg)
-                                console.error(resp.data.signin.error)
+                            if (resp.data.login.error) {
+                                alert(resp.data.login.error.msg)
+                                console.error(resp.data.login.error)
                             } else {
-                                localStorage.setItem("sessionCredentials", JSON.stringify(resp.data.signin.credentials))
-                                console.log(resp.data.signin.credentials)
-                                props.history.push("/")
+                                localStorage.setItem("sessionCredentials", JSON.stringify(resp.data.login))
+                                props.setUser(resp.data.login)
                             }
                         } else {
                             console.error(resp)
@@ -127,8 +125,7 @@ function SignIn(props) {
                         fullWidth
                         variant="contained"
                         color="primary"
-                        className={classes.submit}
-                    >
+                        className={classes.submit}>
                         Log In
                     </Button>
                 </form>
@@ -140,4 +137,4 @@ function SignIn(props) {
     );
 }
 
-export default SignIn;
+export default Login;

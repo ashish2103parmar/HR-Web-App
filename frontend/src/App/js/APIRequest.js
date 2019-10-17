@@ -17,8 +17,10 @@ export default class APIRequest {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
         }
-        if (this.sessionCredentials)
+        if (this.sessionCredentials) {
             headers["X-Session-Key"] = this.sessionCredentials.sessionKey
+            headers["X-Session-User"] = this.sessionCredentials.username
+        }
 
         return fetch(this.path, {
             method: 'POST',
